@@ -1,0 +1,379 @@
+package com.example.qxian.control;
+
+import org.junit.Test;
+
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.List;
+
+import static org.junit.Assert.*;
+
+/**
+ * Example local unit test, which will execute on the development machine (host).
+ *
+ * @see <a href="http://d.android.com/tools/testing">Testing documentation</a>
+ */
+public class ExampleUnitTest {
+    @Test
+    public void addition_isCorrect() {
+       // assertEquals(4, 2 + 2);
+
+        Date currentTime = new Date();
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        String dateString = formatter.format(currentTime);
+       // System.out.println("println输入日志信息"+dateString);
+        try {
+
+            Calendar CurrentTime = SystemCalendar("2019-04-03 19:00:00");
+
+            List<Information> PlayList = new ArrayList<>();
+
+           // PlayList.add(infor("","2019-04-03 19:20:30","2019-04-03 22:00:00","QX96001"));
+            PlayList.add(infor("","2019-04-03 19:25:30","2019-04-03 19:45:00","QX96002"));
+            PlayList.add(infor("","2019-04-03 19:00:30","2019-04-03 19:30:00","QX96003"));
+            PlayList.add(infor("","2019-04-03 19:05:30","2019-04-03 19:13:00","QX96004"));
+
+            SetPlayData(CurrentTime,PlayList);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    public void SetPlayData( Calendar CurrentTime,List<Information> PlayList) throws Exception {
+        //读取所有playlist数据
+
+
+
+        List<PlayData> TimeList = new ArrayList<>();
+        //获取所有播放时间
+        if (PlayList != null && PlayList.size() > 0) {
+
+            for (int i = 0; i < PlayList.size(); i++) {
+                DataProcess(TimeList, PlayList.get(i));
+            }
+            //补充断档空隙
+            List<PlayData> SupplementList = new ArrayList<>();
+            try {
+                for (int i = 0; i < TimeList.size(); i++) {
+                   /* if (i == 0) {
+                        // A 在PlayData之前，补充数据播放
+                        Calendar NowTime = SystemCalendarTime();
+                        Calendar StartTime = SystemCalendar(TimeList.get(i).getPlayStartTime());
+                        if ((StartTime.getTimeInMillis() - NowTime.getTimeInMillis()) / 1000 > 1) {
+                            PlayData data1 = DataPlay(UpTime(NowTime, NowTime.SECOND, 0), UpTime(StartTime, StartTime.SECOND, 0), "", "moren", SourceType.SourceTwo, DownType.DownloadThree);
+                            SupplementList.add(data1);
+                        }
+                    }*/
+                    SupplementList.add(TimeList.get(i));
+                    if (i + 1 < TimeList.size()) {
+                        Calendar LastEndTime = SystemCalendar(TimeList.get(i).getPlayEndTime());
+                        Calendar NextStartTime = SystemCalendar(TimeList.get(i + 1).getPlayStartTime());
+                        if ((NextStartTime.getTimeInMillis() - LastEndTime.getTimeInMillis()) / 1000 > 1) {
+                            PlayData playData = DataPlay(UpTime(LastEndTime, LastEndTime.SECOND, 0), UpTime(NextStartTime, NextStartTime.SECOND, 0), "", "moren", SourceType.SourceTwo, DownType.DownloadThree);
+                            SupplementList.add(playData);
+                        }
+                    } else {
+                        Calendar AfterTime = SystemCalendar(TimeList.get(i).getPlayEndTime());
+                        // B 在PlayData之后，补充数据播放，并拉取最新数据
+                        PlayData playData = DataPlay(UpTime(AfterTime, AfterTime.SECOND, 0), UpTime(AfterTime, AfterTime.DATE, +7), "", "moren", SourceType.SourceTwo, DownType.DownloadThree);
+                        SupplementList.add(playData);
+
+                    }
+                }
+            } catch (ParseException e) {
+                e.printStackTrace();
+            }
+            TimeList.clear();
+            TimeList.addAll(SupplementList);
+        } else {
+           // PlayData playData = DataPlay(UpTime(CurrentTime, CurrentTime.SECOND, +2), UpTime(CurrentTime, CurrentTime.DATE, +7), "", "moren", SourceType.SourceTwo, DownType.DownloadThree);
+           // TimeList.add(playData);
+        }
+
+
+        DeleteData(CurrentTime,PlayList,TimeList);
+
+    }
+
+
+    /**
+     * 删除无用的数据
+     * @param playList
+     * @param timeList
+     */
+    public void DeleteData( Calendar CurrentTime,List<Information> playList, List<PlayData> timeList)  {
+        try {
+
+            List<Information> Newinformation = new ArrayList<>();
+            List<Information> list = playList;
+            Newinformation.addAll(list);
+            List<String> UsefulList = new ArrayList<>();//不用的数据在新的数据里有引用
+            for (Information information : Newinformation) {
+                Calendar PlayPlayEndTime = SystemCalendar(information.getPlayEndTime());//广告数据的结束播放时间
+                if (CurrentTime.after(PlayPlayEndTime)) {//当前时间在广告数据结束播放时间之后----数据无效
+                    //删数据
+                    playList.remove(information);
+                }
+
+            }
+            List<String> uuidList = new ArrayList<>();//有用的uuid
+            List<PlayData> playDataList = timeList;
+            for (PlayData playData : playDataList) {
+                uuidList.add(playData.getPlayListUuid());
+            }
+            for (Information information : Newinformation) {
+                if (!uuidList.contains(information.getPlayListUuid())) {
+                    //删数据
+                    playList.remove(information);
+                }
+            }
+
+
+            for (Information information : playList) {
+                System.out.println("开始时间 ： "+ information.getPlayStartTime()+" ... 结束时间 ： "+ information.getPlayEndTime()+"... uuid ： "+information.getPlayListUuid());
+            }
+
+
+            System.out.println("\n");
+            System.out.println("\n");
+            System.out.println("\n");
+            System.out.println("\n");
+            System.out.println("\n");
+            System.out.println("............................................................................................................................................\n");
+            for (PlayData playData : playDataList) {
+                System.out.println("开始时间 ： "+ playData.getPlayStartTime()+" ... 结束时间 ： "+ playData.getPlayEndTime()+"... uuid ： "+playData.getPlayListUuid());
+            }
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+
+
+
+
+
+
+
+
+
+
+   /* Calendar CurrentTime = SystemCalendarTime();
+    List<PlayData> playDataList = DaoTool.SearchPlayDataAll();
+    List<String> UsefulList = new ArrayList<>();//不用的数据
+    List<String> uuidList = new ArrayList<>();//有用的uuid
+    for (PlayData playData : playDataList) {
+        Calendar PlayPlayEndTime = SystemCalendar(playData.getPlayEndTime());//广告数据的结束播放时间
+        if (CurrentTime.before(PlayPlayEndTime)) {//当前时间在广告数据结束播放时间之后----数据无效
+            uuidList.add(playData.getPlayListUuid());
+            List<Advert> advertList = DaoTool.SearchAdvert(playData.getPlayListUuid());
+            for (final Advert advert : advertList) {
+                if (advert.getVedioFile() != null) {
+                    UsefulList.add(advert.getVedioFile());
+                }
+                if (advert.getVedioCoverFile() != null) {
+                    UsefulList.add(advert.getVedioCoverFile());
+                }
+                if (advert.getImageFile() != null) {
+                    UsefulList.add(advert.getImageFile());
+                }
+            }
+        }
+    }
+
+    List<Information> Newinformation = new ArrayList<>();
+    List<Information> list = DaoTool.SearchInformation();
+    Newinformation.addAll(list);
+    for (Information information : Newinformation) {
+        if (!uuidList.contains(information.getPlayListUuid())) {
+            //删数据
+            DaoTool.DeteleInformation(information.getPlayListUuid());
+            DaoTool.DeteleAdvert(information.getPlayListUuid());
+        }
+    }
+
+    List<Advert> advertList = DaoTool.SearchAdvert(AppConstant.PLAYLISTUUID);
+    for (final Advert advert : advertList) {
+        if (advert.getVedioFile() != null) {
+            UsefulList.add(advert.getVedioFile());
+        }
+        if (advert.getVedioCoverFile() != null) {
+            UsefulList.add(advert.getVedioCoverFile());
+        }
+        if (advert.getImageFile() != null) {
+            UsefulList.add(advert.getImageFile());
+        }
+    }
+
+    List<String> Allfile = Utils.getFilesAllName(AppConstant.IMAGE_DATAIL);
+    for (final String file : Allfile) {
+        if (!UsefulList.contains(file)) {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    //删数据
+                    Utils.delete(file);
+                }
+            }).start();
+        }
+    }*/
+    }
+
+
+    private Information infor(String down,String start, String end, String uuid) {
+        Information information = new Information();
+        information.setDownloadTime(down);
+        information.setPlayStartTime(start);
+        information.setPlayEndTime(end);
+        information.setPlayListUuid(uuid);
+        return information;
+    }
+
+
+    private void DataProcess(List<PlayData> timeList, Information information) throws Exception {
+        if (timeList.size() == 0) {
+            PlayData playData = DataPlay(information.getPlayStartTime(), information.getPlayEndTime(), information.getDownloadTime(), information.getPlayListUuid(), SourceType.SourceOne, DownType.DownloadOne);
+            timeList.add(playData);
+        } else {
+            List<PlayData> NewTimeList = new ArrayList<>();
+            //数据生成
+            for (PlayData playData : timeList) {
+                SetTime(NewTimeList, playData, information);
+            }
+            //数据筛选
+            if (timeList.size() > 1) {
+                ModifyTime(NewTimeList);
+            }
+            timeList.clear();
+            timeList.addAll(NewTimeList);
+        }
+    }
+
+    private void SetTime(List<PlayData> newTimeList, PlayData playData, Information information) throws Exception {
+
+        Calendar TimeBeanStartTime = SystemCalendar(playData.getPlayStartTime());
+        Calendar TimeBeanEndTime = SystemCalendar(playData.getPlayEndTime());
+        Calendar InformationStartTime = SystemCalendar(information.getPlayStartTime());
+        Calendar InformationEndTime = SystemCalendar(information.getPlayEndTime());
+
+        if (TimeBeanStartTime.before(TimeBeanEndTime) && InformationStartTime.before(InformationEndTime)) {
+            if (TimeBeanEndTime.before(InformationStartTime) || TimeBeanEndTime.compareTo(InformationStartTime) == 0) {
+                //AB CD  ---A<B<C<D    A<B=C<D    A<C=B<D
+                PlayData data1 = DataPlay(playData.getPlayStartTime(), playData.getPlayEndTime(), playData.getDownloadTime(), playData.getPlayListUuid(), SourceType.SourceOne, DownType.DownloadOne);
+                newTimeList.add(data1);
+                PlayData data2 = DataPlay(information.getPlayStartTime(), information.getPlayEndTime(), information.getDownloadTime(), information.getPlayListUuid(), SourceType.SourceOne, DownType.DownloadOne);
+                newTimeList.add(data2);
+
+            } else if (TimeBeanStartTime.before(InformationStartTime) && TimeBeanStartTime.before(InformationEndTime) && TimeBeanEndTime.after(InformationStartTime) && TimeBeanEndTime.after(InformationEndTime)) {
+                //AC CD DB--A<C<D<B
+                PlayData data1 = DataPlay(playData.getPlayStartTime(), UpTime(InformationStartTime, InformationStartTime.SECOND, 0), playData.getDownloadTime(), playData.getPlayListUuid(), SourceType.SourceOne, DownType.DownloadOne);
+                newTimeList.add(data1);
+                PlayData data2 = DataPlay(information.getPlayStartTime(), information.getPlayEndTime(), information.getDownloadTime(), information.getPlayListUuid(), SourceType.SourceOne, DownType.DownloadOne);
+                newTimeList.add(data2);
+           /* PlayData data3 = DataPlay(UpTime(InformationEndTime, InformationEndTime.SECOND, 0), playData.getPlayEndTime(), playData.getDownloadTime(), playData.getPlayListUuid(), SourceType.SourceOne, DownType.DownloadOne);
+            newTimeList.add(data3);*/
+
+            } else if (TimeBeanStartTime.before(InformationStartTime) && TimeBeanEndTime.after(InformationStartTime) && (TimeBeanEndTime.before(InformationEndTime) || TimeBeanEndTime.compareTo(InformationEndTime) == 0)) {
+                //AC CD  ---A<C<B<D    A<C<B=D    A<C<D=B
+                PlayData data1 = DataPlay(playData.getPlayStartTime(), UpTime(InformationStartTime, InformationStartTime.SECOND, 0), playData.getDownloadTime(), playData.getPlayListUuid(), SourceType.SourceOne, DownType.DownloadOne);
+                newTimeList.add(data1);
+                PlayData data2 = DataPlay(information.getPlayStartTime(), information.getPlayEndTime(), information.getDownloadTime(), information.getPlayListUuid(), SourceType.SourceOne, DownType.DownloadOne);
+                newTimeList.add(data2);
+
+            } else if (TimeBeanEndTime.after(InformationStartTime) && (TimeBeanStartTime.compareTo(InformationEndTime) == 0 || InformationEndTime.before(TimeBeanStartTime))) {
+                //CD AB  ---C<D<A<B    C<D=A<B     C<A=D<B
+                PlayData data1 = DataPlay(information.getPlayStartTime(), information.getPlayEndTime(), information.getDownloadTime(), information.getPlayListUuid(), SourceType.SourceOne, DownType.DownloadOne);
+                newTimeList.add(data1);
+                PlayData data2 = DataPlay(playData.getPlayStartTime(), playData.getPlayEndTime(), playData.getDownloadTime(), playData.getPlayListUuid(), SourceType.SourceOne, DownType.DownloadOne);
+                newTimeList.add(data2);
+
+            } else if (TimeBeanEndTime.after(InformationStartTime) && TimeBeanStartTime.before(InformationEndTime) && InformationEndTime.before(TimeBeanEndTime) && (TimeBeanStartTime.compareTo(InformationStartTime) == 0 || InformationStartTime.before(TimeBeanStartTime))) {
+                //CD DB  ---C<A<D<B    C=A<D<B    A=C<D<B
+                PlayData data1 = DataPlay(information.getPlayStartTime(), information.getPlayEndTime(), information.getDownloadTime(), information.getPlayListUuid(), SourceType.SourceOne, DownType.DownloadOne);
+                newTimeList.add(data1);
+                PlayData data2 = DataPlay(UpTime(InformationEndTime, InformationEndTime.SECOND, 0), playData.getPlayEndTime(), playData.getDownloadTime(), playData.getPlayListUuid(), SourceType.SourceOne, DownType.DownloadOne);
+                newTimeList.add(data2);
+
+            } else if (TimeBeanStartTime.before(InformationEndTime) && InformationStartTime.before(TimeBeanEndTime) && (TimeBeanStartTime.compareTo(InformationStartTime) == 0 && (TimeBeanEndTime.before(InformationEndTime) || TimeBeanEndTime.compareTo(InformationEndTime) == 0) || InformationStartTime.before(TimeBeanStartTime) && (TimeBeanEndTime.before(InformationEndTime) || TimeBeanEndTime.compareTo(InformationEndTime) == 0))) {
+                //   CD  ---A=C<B<D    A=C<B=D    A=C<D=B    C<A<D=B   C<A<B<D
+                //          C=A<B<D    C=A<B=D    C=A<D=B    C<A<B=D
+                PlayData data2 = DataPlay(information.getPlayStartTime(), information.getPlayEndTime(), information.getDownloadTime(), information.getPlayListUuid(), SourceType.SourceOne, DownType.DownloadOne);
+                newTimeList.add(data2);
+
+            } else {
+                //时间错误
+                System.out.println("..........第二步错误");
+            }
+        } else {
+            //时间错误
+            System.out.println("..........第一步错误");
+        }
+
+    }
+
+    //排序---现去重---在按时间排序
+    private void ModifyTime(List<PlayData> newTimeList) {
+        for (int i = 0; i < newTimeList.size() - 1; i++) {
+            for (int j = newTimeList.size() - 1; j > i; j--) {
+                if (newTimeList.get(j).getPlayListUuid() == newTimeList.get(i).getPlayListUuid() && newTimeList.get(j).getPlayStartTime() == newTimeList.get(i).getPlayStartTime() && newTimeList.get(j).getPlayEndTime() == newTimeList.get(i).getPlayEndTime()) {
+                    newTimeList.remove(j);
+                }
+            }
+        }
+        SortList(newTimeList);
+
+    }
+
+    private List<PlayData> SortList(List<PlayData> newTimeList) {
+        Collections.sort(newTimeList, new Comparator<PlayData>() {
+            @Override
+            public int compare(PlayData o1, PlayData o2) {
+                if (o1.getPlayStartTime().compareTo(o2.getPlayStartTime()) > 0) {
+                    return 1;
+                } else {
+                    return -1;
+                }
+            }
+        });
+        return newTimeList;
+    }
+
+
+    private PlayData DataPlay(String startTime, String endTime, String downloadTime, String listuuid, int soucretype, int downtype) {
+        PlayData playData = new PlayData();
+        playData.setPlayStartTime(startTime);
+        playData.setPlayEndTime(endTime);
+        playData.setDownloadTime(downloadTime);
+        playData.setPlayListUuid(listuuid);
+        playData.setSourceType(soucretype);
+        playData.setDownType(downtype);
+        return playData;
+    }
+
+    private String UpTime(Calendar currentTime, int field, int amount) {
+        SimpleDateFormat SimpleFormatTime = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        currentTime.add(field, amount);
+        return SimpleFormatTime.format(currentTime.getTime());
+    }
+
+    private Calendar SystemCalendar(String TIME) throws ParseException {
+        SimpleDateFormat SimpleFormatTime = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(SimpleFormatTime.parse(TIME));
+        return calendar;
+    }
+
+    private Calendar SystemCalendarTime() throws ParseException {//DateUtils.getInstance().getServerNowTime()
+        SimpleDateFormat SimpleFormatTime = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(SimpleFormatTime.parse(String.valueOf(System.currentTimeMillis())));
+        return calendar;
+    }
+
+
+}
